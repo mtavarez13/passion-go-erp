@@ -70,7 +70,7 @@ export default function Layout() {
               console.log(`Profile updated (Real-time from ${u.uid}):`, data);
               
               // Auto-promote primary admin if needed
-              if (u.email === 'martin.tavarez.gomez@gmail.com' && data.role !== 'Admin General') {
+              if (u.email === 'martin.tavarez.gomez@gmail.com' && u.emailVerified && data.role !== 'Admin General') {
                 await updateDoc(doc(db, 'users', u.uid), { role: 'Admin General' });
               } else {
                 setProfile(data);
@@ -93,74 +93,28 @@ export default function Layout() {
 
         const handleProfileSync = async (user: User) => {
           try {
-            const qEmail = query(collection(db, 'users'), where('email', '==', user.email));
-            const emailSnapshot = await getDocs(qEmail);
-            
-            if (!emailSnapshot.empty) {
-              const existingDoc = emailSnapshot.docs[0];
-              const existingData = existingDoc.data();
-              console.log('Profile found by email, migrating to UID ID:', existingDoc.id, '->', user.uid);
-              
-              await setDoc(doc(db, 'users', user.uid), {
-                ...existingData,
-                uid: user.uid,
-                updatedAt: new Date().toISOString()
-              });
-              
-              if (existingDoc.id !== user.uid) {
-                await deleteDoc(doc(db, 'users', existingDoc.id));
-              }
+            const primary = user.email === 'martin.tavarez.gomez@gmail.com' && user.emailVerified;
+            const email = user.email?.toLowerCase() || '';
+            const invitation = await getDoc(doc(db, 'user_access', email));
+            if (!primary && !invitation.exists()) {
+              setError('Tu cuenta aún no tiene acceso. Solicita autorización al Administrador General.');
+              setLoading(false);
               return;
             }
-
-            const qUid = query(collection(db, 'users'), where('uid', '==', user.uid));
-            const uidSnapshot = await getDocs(qUid);
-            if (!uidSnapshot.empty && uidSnapshot.docs[0].id !== user.uid) {
-               const existingDoc = uidSnapshot.docs[0];
-               const existingData = existingDoc.data();
-               console.log('Profile found by UID field, migrating to UID ID:', existingDoc.id, '->', user.uid);
-               await setDoc(doc(db, 'users', user.uid), {
-                 ...existingData,
-                 updatedAt: new Date().toISOString()
-               });
-               await deleteDoc(doc(db, 'users', existingDoc.id));
-               return;
-            }
-
-            if (user.email === 'martin.tavarez.gomez@gmail.com') {
-              console.log('Creating primary admin profile...');
-              await setDoc(doc(db, 'users', user.uid), {
-                uid: user.uid,
-                email: user.email,
-                role: 'Admin General',
-                sede: 'Dajabón',
-                enabledModules: [
-                  'whatsapp', 
-                  'accounting', 
-                  'inventory', 
-                  'cash', 
-                  'branches', 
-                  'packages', 
-                  'api-panel', 
-                  'franchises', 
-                  'delivery-drivers', 
-                  'driver-portal'
-                ],
-                createdAt: new Date().toISOString()
-              });
-            } else {
-              console.log('Creating default operator profile...');
-              await setDoc(doc(db, 'users', user.uid), {
-                uid: user.uid,
-                email: user.email,
-                role: 'Operador',
-                sede: 'Sin Asignar',
-                enabledModules: ['whatsapp', 'packages'],
-                createdAt: new Date().toISOString()
-              });
-            }
+            const access = invitation.exists() ? invitation.data() : {};
+            await setDoc(doc(db, 'users', user.uid), {
+              ...access,
+              uid: user.uid,
+              email,
+              role: primary ? 'Admin General' : access.role,
+              enabledModules: primary ? ['whatsapp', 'accounting', 'inventory', 'cash', 'branches', 'packages', 'api-panel', 'franchises', 'delivery-drivers', 'driver-portal'] : access.enabledModules || [],
+              sede: access.sede || 'Principal',
+              createdAt: new Date().toISOString()
+            });
           } catch (error) {
             console.error('Error syncing profile:', error);
+            setError('No se pudo verificar el acceso. Revisa las reglas de Firebase.');
+            setLoading(false);
           }
         };
 

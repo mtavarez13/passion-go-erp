@@ -94,7 +94,7 @@ export default function UserManagement({ profile }: { profile: UserProfile }) {
     enabledModules: ['whatsapp']
   });
 
-  const isAdmin = profile.role === 'Admin General' || profile.role === 'Admin';
+  const isAdmin = profile.role === 'Admin General';
 
   if (!isAdmin) {
     return <div className="p-8 text-center text-zinc-500">Acceso restringido a administradores.</div>;
@@ -196,7 +196,13 @@ export default function UserManagement({ profile }: { profile: UserProfile }) {
         }
       } else {
         if (!formData.password) {
-          alert('La contraseña es obligatoria para nuevos usuarios.');
+          const { password, ...access } = formData;
+          const email = formData.email.trim().toLowerCase();
+          await setDoc(doc(db, 'user_access', email), {
+            ...access, email, createdBy: profile.uid, createdAt: new Date().toISOString()
+          });
+          alert('Acceso autorizado. El usuario ya puede entrar con Google usando este correo.');
+          resetForm();
           return;
         }
 
@@ -296,7 +302,7 @@ export default function UserManagement({ profile }: { profile: UserProfile }) {
             />
 
             <Input 
-              label="Contraseña" 
+              label="Contraseña (opcional; sin contraseña accede con Google)" 
               value={formData.password} 
               onChange={e => setFormData({ ...formData, password: e.target.value })}
               placeholder={editingId ? "Dejar en blanco para no cambiar" : "••••••••"}
