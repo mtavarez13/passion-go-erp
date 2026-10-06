@@ -14,10 +14,13 @@ export default function Auth({ onLoginSuccess }: { onLoginSuccess?: () => void }
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      setError(null);
       await signInWithPopup(auth, provider);
       if (onLoginSuccess) onLoginSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      setError(`No se pudo iniciar sesión con Google (${error.code || 'error'}). ${error.message || ''}`);
     } finally {
       setLoading(false);
     }
@@ -51,6 +54,7 @@ export default function Auth({ onLoginSuccess }: { onLoginSuccess?: () => void }
           <p className="text-slate-500 text-xs mt-1">Portal de Acceso Administrativo y Operativo</p>
         </div>
 
+        {error && <p role="alert" className="text-sm text-red-700 bg-red-50 p-3 rounded-xl">{error}</p>}
         {showEmailLogin ? (
           <form onSubmit={handleEmailLogin} className="w-full space-y-4">
             <Input 

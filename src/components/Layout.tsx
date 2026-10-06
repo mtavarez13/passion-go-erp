@@ -95,13 +95,13 @@ export default function Layout() {
           try {
             const primary = user.email === 'martin.tavarez.gomez@gmail.com' && user.emailVerified;
             const email = user.email?.toLowerCase() || '';
-            const invitation = await getDoc(doc(db, 'user_access', email));
-            if (!primary && !invitation.exists()) {
+            const invitation = primary ? null : await getDoc(doc(db, 'user_access', email));
+            if (!primary && !invitation?.exists()) {
               setError('Tu cuenta aún no tiene acceso. Solicita autorización al Administrador General.');
               setLoading(false);
               return;
             }
-            const access = invitation.exists() ? invitation.data() : {};
+            const access = invitation?.exists() ? invitation.data() : {};
             await setDoc(doc(db, 'users', user.uid), {
               ...access,
               uid: user.uid,
