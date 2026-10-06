@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "node runtime-server.mjs",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
