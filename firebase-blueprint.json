@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role and sede assignment.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["Admin General", "Admin", "Operador"] },
+        "sede": { "type": "string" },
+        "enabledModules": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Branch": {
+      "title": "Branch",
+      "description": "Branch (Sucursal) with assigned zones.",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "direccion": { "type": "string" },
+        "repartidorNombre": { "type": "string" },
+        "repartidorTelefono": { "type": "string" },
+        "zonas": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["nombre", "direccion", "repartidorNombre", "repartidorTelefono", "zonas"]
+    },
+    "WhatsAppPackage": {
+      "title": "WhatsAppPackage",
+      "description": "Package for WhatsApp delivery tracking.",
+      "type": "object",
+      "properties": {
+        "cod": { "type": "string" },
+        "tienda": { "type": "string" },
+        "zona": { "type": "string" },
+        "nota": { "type": "string" },
+        "cliente": { "type": "string" },
+        "telefono": { "type": "string" },
+        "sede": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Abierto", "Entregado", "Pagado"] },
+        "costo": { "type": "number" },
+        "articulo": { "type": "string" },
+        "proveedor": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["cod", "tienda", "cliente", "telefono", "sede", "estado"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction (income/expense).",
+      "type": "object",
+      "properties": {
+        "tipo": { "type": "string", "enum": ["Ingreso", "Gasto"] },
+        "monto": { "type": "number" },
+        "categoria": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "fecha": { "type": "string", "format": "date" },
+        "sede": { "type": "string" },
+        "facturaData": {
+          "type": "object",
+          "properties": {
+            "monto": { "type": "number" },
+            "proveedor": { "type": "string" },
+            "fecha": { "type": "string" },
+            "numeroFactura": { "type": "string" }
+          }
+        }
+      },
+      "required": ["tipo", "monto", "fecha", "sede"]
+    },
+    "BlumboxPackage": {
+      "title": "BlumboxPackage",
+      "description": "Package from Blumbox inventory.",
+      "type": "object",
+      "properties": {
+        "tracking": { "type": "string" },
+        "cliente": { "type": "string" },
+        "status": { "type": "string", "enum": ["Disponible"] },
+        "sede": { "type": "string" },
+        "checked": { "type": "boolean" },
+        "valor": { "type": "number" }
+      },
+      "required": ["tracking", "cliente", "status", "sede"]
+    },
+    "Provider": {
+      "title": "Provider",
+      "description": "Supplier or provider of packages.",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "telefono": { "type": "string" },
+        "email": { "type": "string" },
+        "sede": { "type": "string" }
+      },
+      "required": ["nombre", "sede"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles."
+    },
+    "/branches/{branchId}": {
+      "schema": "Branch",
+      "description": "Branches (Sucursales)."
+    },
+    "/packages/{packageId}": {
+      "schema": "WhatsAppPackage",
+      "description": "WhatsApp delivery packages."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial transactions."
+    },
+    "/inventory/{inventoryId}": {
+      "schema": "BlumboxPackage",
+      "description": "Blumbox inventory packages."
+    },
+    "/providers/{providerId}": {
+      "schema": "Provider",
+      "description": "Suppliers/Providers."
+    }
+  }
+}

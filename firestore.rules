@@ -1,0 +1,181 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isGeneralAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "martin.tavarez.gomez@gmail.com" && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin General')
+      );
+    }
+    
+    function isAdmin() {
+      return isGeneralAdmin() || isBranchAdmin();
+    }
+    
+    function isBranchAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+
+    function isAnyAdmin() {
+      return isGeneralAdmin() || isBranchAdmin();
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isSelfByEmail(email) {
+      return isAuthenticated() && request.auth.token.email == email;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function getSede() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sede;
+    }
+
+    function isSedeOperador(sede) {
+      return isAuthenticated() && (isAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getSede() == sede));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string && data.email is string &&
+             data.role in ['Admin General', 'Admin', 'Operador', 'Repartidor', 'Franquicia'] &&
+             (!('enabledModules' in data) || data.enabledModules is list) &&
+             (!('sede' in data) || data.sede is string);
+    }
+
+    function isValidPackage(data) {
+      return data.keys().hasAll(['cod', 'tienda', 'cliente', 'telefono', 'sede', 'estado']) &&
+             data.cod is string && data.tienda is string &&
+             data.cliente is string && data.telefono is string &&
+             data.sede is string &&
+             data.estado in ['Abierto', 'Entregado', 'Pagado'];
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['tipo', 'monto', 'fecha', 'sede']) &&
+             data.tipo in ['Ingreso', 'Gasto'] &&
+             data.monto is number && data.fecha is string &&
+             data.sede is string;
+    }
+
+    function isValidBranch(data) {
+      return data.keys().hasAll(['nombre', 'direccion', 'repartidorNombre', 'repartidorTelefono', 'zonas']) &&
+             data.nombre is string && data.direccion is string &&
+             data.repartidorNombre is string && data.repartidorTelefono is string &&
+             data.zonas is list;
+    }
+
+    function isValidProvider(data) {
+      return data.keys().hasAll(['nombre', 'sede']) &&
+             data.nombre is string && data.sede is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        userId == request.auth.uid || 
+        request.auth.token.email == "martin.tavarez.gomez@gmail.com" ||
+        (resource != null && (resource.data.email == request.auth.token.email || resource.data.uid == request.auth.uid)) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        userId == request.auth.uid || 
+        request.auth.token.email == "martin.tavarez.gomez@gmail.com" ||
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (userId == request.auth.uid && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.uid == resource.data.uid)
+      );
+      allow delete: if isAuthenticated() && (
+        isAdmin() || 
+        userId == request.auth.uid || 
+        (resource != null && (resource.data.email == request.auth.token.email || resource.data.uid == request.auth.uid))
+      );
+    }
+
+    match /branches/{branchId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidBranch(request.resource.data);
+      allow update: if isAdmin() && isValidBranch(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /franchises/{franchiseId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (isAdmin() || isSedeOperador(request.resource.data.assignedSede));
+      allow delete: if isAdmin();
+    }
+
+    match /delivery_drivers/{driverId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (isAdmin() || isSedeOperador(request.resource.data.assignedSede));
+      allow delete: if isAdmin();
+    }
+
+    match /packages/{packageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPackage(request.resource.data);
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (isAdmin() || getSede() == resource.data.sede);
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && (isAdmin() || getSede() == request.resource.data.sede);
+      allow update: if isAuthenticated() && isValidTransaction(request.resource.data) && (isAdmin() || getSede() == resource.data.sede);
+      allow delete: if isAdmin();
+    }
+
+    match /inventory/{inventoryId} {
+      allow read: if isAuthenticated() && (isAdmin() || getSede() == resource.data.sede);
+      allow create: if isAuthenticated() && (isAdmin() || getSede() == request.resource.data.sede);
+      allow update: if isAuthenticated() && (isAdmin() || getSede() == resource.data.sede);
+      allow delete: if isAdmin();
+    }
+
+    match /providers/{providerId} {
+      allow read: if isAuthenticated() && (isAdmin() || getSede() == resource.data.sede);
+      allow create: if isAuthenticated() && isValidProvider(request.resource.data) && (isAdmin() || getSede() == request.resource.data.sede);
+      allow update: if isAuthenticated() && isValidProvider(request.resource.data) && (isAdmin() || getSede() == resource.data.sede);
+      allow delete: if isAdmin();
+    }
+
+    match /carrier_integrations/{integrationId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /api_keys/{keyId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /api_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() || true; // Server or authenticated users
+      allow update, delete: if isAdmin();
+    }
+  }
+}

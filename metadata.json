@@ -1,0 +1,6 @@
+{
+  "name": "Passion Go",
+  "description": "Expertos en entrega de última milla en toda República Dominicana, rastreo de paquetes y gestión logística Passion Go.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
