@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
-import { WhatsAppPackage, UserProfile, Sede, Transaction, Branch, Franchise, DeliveryDriver, CarrierIntegration } from '../types';
+import { WhatsAppPackage, UserProfile, Sede, Transaction, Branch, Franchise, DeliveryDriver } from '../types';
 import { Card, Button, Input, Badge, cn } from './ui';
 import { 
   Package, 
@@ -26,13 +26,6 @@ import {
 } from 'lucide-react';
 import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
 
-const escapeLabelHtml = (value: unknown) => String(value ?? '')
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#039;');
-
 export default function PackagesModule({ 
   profile,
   initialFranchiseId
@@ -44,7 +37,6 @@ export default function PackagesModule({
   const [branches, setBranches] = useState<Branch[]>([]);
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [drivers, setDrivers] = useState<DeliveryDriver[]>([]);
-  const [carriers, setCarriers] = useState<CarrierIntegration[]>([]);
   
   const [selectedSede, setSelectedSede] = useState<string>(profile.role === 'Admin General' ? 'Todas' : profile.sede);
   const [loading, setLoading] = useState(true);
@@ -86,11 +78,6 @@ export default function PackagesModule({
       setDrivers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeliveryDriver)));
     });
 
-    // Company branding used on printable shipping labels.
-    const unsubscribeCarriers = onSnapshot(collection(db, 'carrier_integrations'), (snapshot) => {
-      setCarriers(snapshot.docs.map(carrierDoc => ({ id: carrierDoc.id, ...carrierDoc.data() } as CarrierIntegration)));
-    });
-
     // Fetch packages
     let q = query(collection(db, 'packages'));
     if (profile.role !== 'Admin General' || selectedSede !== 'Todas') {
@@ -107,7 +94,6 @@ export default function PackagesModule({
       unsubscribeBranches();
       unsubscribeFranchises();
       unsubscribeDrivers();
-      unsubscribeCarriers();
       unsubscribePackages();
     };
   }, [selectedSede, profile.role]);
@@ -168,65 +154,6 @@ export default function PackagesModule({
       console.error('Error updating package assignment:', err);
       alert('Error al asignar el paquete.');
     }
-  };
-
-  const handlePrintLabel = (pkg: WhatsAppPackage) => {
-    const normalizedCompany = pkg.tienda.trim().toLowerCase();
-    const carrier = carriers.find(item => {
-      const name = item.name.trim().toLowerCase();
-      return name === normalizedCompany || name.includes(normalizedCompany) || normalizedCompany.includes(name);
-    });
-    const logoUrl = carrier?.logoUrl && (/^data:image\//i.test(carrier.logoUrl) || /^https:\/\//i.test(carrier.logoUrl))
-      ? escapeLabelHtml(carrier.logoUrl)
-      : '';
-    const printWindow = window.open('', '_blank', 'width=760,height=900');
-    if (!printWindow) {
-      alert('Permite las ventanas emergentes para imprimir la etiqueta.');
-      return;
-    }
-
-    printWindow.document.write(`<!doctype html>
-      <html lang="es"><head><meta charset="utf-8"><title>Etiqueta ${escapeLabelHtml(pkg.cod)}</title>
-      <style>
-        @page { size: 4in 6in; margin: 0; }
-        * { box-sizing: border-box; }
-        body { margin: 0; color: #111827; font-family: Arial, Helvetica, sans-serif; }
-        .label { width: 4in; min-height: 6in; padding: 18px; border: 2px solid #111827; display: flex; flex-direction: column; }
-        .brand { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 3px solid #111827; }
-        .logo { width: 62px; height: 62px; object-fit: contain; border: 1px solid #d1d5db; border-radius: 10px; padding: 4px; }
-        .fallback { width: 62px; height: 62px; border-radius: 10px; display: grid; place-items: center; background: #3b0764; color: #fbbf24; font-weight: 900; font-size: 17px; }
-        .company { font-size: 21px; font-weight: 900; line-height: 1.08; }
-        .eyebrow { color: #6b7280; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 4px; }
-        .tracking { text-align: center; padding: 18px 8px; border-bottom: 1px dashed #9ca3af; }
-        .tracking strong { display: block; font-size: 27px; letter-spacing: .06em; overflow-wrap: anywhere; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; padding: 17px 0; }
-        .field.wide { grid-column: 1 / -1; }
-        .value { font-size: 14px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
-        .amount { margin-top: 3px; padding: 12px; border: 2px solid #111827; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .amount strong { font-size: 20px; }
-        .footer { margin-top: auto; padding-top: 14px; border-top: 2px solid #111827; text-align: center; }
-        .footer strong { display: block; font-size: 12px; letter-spacing: .08em; }
-        .footer span { display: block; margin-top: 4px; font-size: 14px; font-weight: 900; }
-        @media print { body { width: 4in; height: 6in; } .label { border: 0; } }
-      </style></head><body><main class="label">
-        <header class="brand">
-          ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo">` : `<div class="fallback">${escapeLabelHtml((carrier?.slug || pkg.tienda || 'EMP').slice(0, 3).toUpperCase())}</div>`}
-          <div><div class="eyebrow">Empresa remitente</div><div class="company">${escapeLabelHtml(carrier?.name || pkg.tienda)}</div></div>
-        </header>
-        <section class="tracking"><div class="eyebrow">Número de guía</div><strong>${escapeLabelHtml(pkg.cod)}</strong></section>
-        <section class="grid">
-          <div class="field wide"><div class="eyebrow">Destinatario</div><div class="value">${escapeLabelHtml(pkg.cliente)}</div></div>
-          <div class="field"><div class="eyebrow">Teléfono</div><div class="value">${escapeLabelHtml(pkg.telefono)}</div></div>
-          <div class="field"><div class="eyebrow">Destino / sede</div><div class="value">${escapeLabelHtml(pkg.zona || pkg.sede)}</div></div>
-          <div class="field wide"><div class="eyebrow">Contenido</div><div class="value">${escapeLabelHtml(pkg.articulo || 'Paquete')}</div></div>
-          ${pkg.nota ? `<div class="field wide"><div class="eyebrow">Instrucciones</div><div class="value">${escapeLabelHtml(pkg.nota)}</div></div>` : ''}
-        </section>
-        <div class="amount"><span class="eyebrow">Cobro contra entrega</span><strong>RD$${Number(pkg.costo || 0).toLocaleString('es-DO')}</strong></div>
-        <footer class="footer"><strong>PASSION GO · ERP LOGÍSTICO</strong><span>go.hispaniolapay.com</span></footer>
-      </main></body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    window.setTimeout(() => printWindow.print(), logoUrl ? 700 : 150);
   };
 
   const filteredPackages = packages.filter(p => {
@@ -527,17 +454,7 @@ export default function PackagesModule({
                         </td>
 
                         <td className="px-6 py-4 text-right">
-                          <div className="flex flex-col items-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handlePrintLabel(pkg)}
-                              className="text-xs font-semibold"
-                            >
-                              <Printer size={14} />
-                              Etiqueta
-                            </Button>
-                            {pkg.estado !== 'Pagado' ? (
+                          {pkg.estado !== 'Pagado' ? (
                             <Button 
                               size="sm"
                               onClick={() => handleFacturar(pkg)}
@@ -546,13 +463,12 @@ export default function PackagesModule({
                               <Receipt size={14} />
                               Facturar
                             </Button>
-                            ) : (
+                          ) : (
                             <div className="flex items-center justify-end gap-1 text-emerald-600 font-bold text-xs">
                               <CheckCircle2 size={16} />
                               Facturado
                             </div>
-                            )}
-                          </div>
+                          )}
                         </td>
                       </tr>
                     );

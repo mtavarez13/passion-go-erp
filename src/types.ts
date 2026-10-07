@@ -161,7 +161,6 @@ export interface CarrierIntegration {
   id: string;
   name: string; // e.g. "DHL Express", "FedEx", "MailAmericas", "Gofo Express", "UPS", "Generic Carrier"
   slug: 'dhl' | 'fedex' | 'mailamericas' | 'gofo' | 'ups' | 'custom';
-  logoUrl?: string; // URL HTTPS o imagen cargada como data URL
   logoColor: string;
   status: 'active' | 'inactive' | 'testing';
   apiKey: string;
