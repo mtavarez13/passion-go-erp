@@ -156,6 +156,7 @@ export default function ApiPanel({ userProfile, onNavigateToPackages }: ApiPanel
   const [editingCarrier, setEditingCarrier] = useState<CarrierIntegration | null>(null);
   const [carrierForm, setCarrierForm] = useState({
     name: '',
+    logoUrl: '',
     slug: 'custom' as CarrierIntegration['slug'],
     status: 'active' as CarrierIntegration['status'],
     apiKey: '',
@@ -168,6 +169,22 @@ export default function ApiPanel({ userProfile, onNavigateToPackages }: ApiPanel
     serviceType: 'last_mile_delivery' as CarrierIntegration['serviceType'],
     ratePerKg: 175
   });
+
+  const handleCarrierLogoUpload = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Selecciona una imagen válida para el logo.');
+      return;
+    }
+    if (file.size > 600 * 1024) {
+      alert('El logo debe pesar menos de 600 KB para guardarse correctamente.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setCarrierForm(current => ({ ...current, logoUrl: String(reader.result || '') }));
+    reader.onerror = () => alert('No se pudo leer la imagen seleccionada.');
+    reader.readAsDataURL(file);
+  };
 
   // Modal for new API Key
   const [keyModalOpen, setKeyModalOpen] = useState(false);
@@ -645,6 +662,7 @@ export default function ApiPanel({ userProfile, onNavigateToPackages }: ApiPanel
                 setEditingCarrier(null);
                 setCarrierForm({
                   name: '',
+                  logoUrl: '',
                   slug: 'custom',
                   status: 'active',
                   apiKey: `sec_${Math.random().toString(36).substring(2, 14)}`,
@@ -787,6 +805,7 @@ export default function ApiPanel({ userProfile, onNavigateToPackages }: ApiPanel
                 setEditingCarrier(null);
                 setCarrierForm({
                   name: '',
+                  logoUrl: '',
                   slug: 'custom',
                   status: 'active',
                   apiKey: `sec_${Math.random().toString(36).substring(2, 14)}`,
@@ -816,9 +835,13 @@ export default function ApiPanel({ userProfile, onNavigateToPackages }: ApiPanel
                 <div className="p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm uppercase tracking-wider border shadow-sm", carrier.logoColor || 'bg-zinc-800 text-white')}>
-                        {carrier.slug.toUpperCase().slice(0, 3)}
-                      </div>
+                      {carrier.logoUrl ? (
+                        <img src={carrier.logoUrl} alt={`Logo de ${carrier.name}`} className="w-12 h-12 rounded-xl object-contain bg-white border border-zinc-200 shadow-sm p-1" />
+                      ) : (
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm uppercase tracking-wider border shadow-sm", carrier.logoColor || 'bg-zinc-800 text-white')}>
+                          {carrier.slug.toUpperCase().slice(0, 3)}
+                        </div>
+                      )}
                       <div>
                         <h3 className="font-bold text-zinc-900 text-base">{carrier.name}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -926,6 +949,7 @@ export default function ApiPanel({ userProfile, onNavigateToPackages }: ApiPanel
                       setEditingCarrier(carrier);
                       setCarrierForm({
                         name: carrier.name,
+                        logoUrl: carrier.logoUrl || '',
                         slug: carrier.slug,
                         status: carrier.status,
                         apiKey: carrier.apiKey || '',
@@ -1665,6 +1689,39 @@ print(response.json())`}
                 placeholder="ej. DHL Express, FedEx, MailAmericas..."
                 required
               />
+
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 space-y-3">
+                <div className="flex items-center gap-3">
+                  {carrierForm.logoUrl ? (
+                    <img src={carrierForm.logoUrl} alt="Vista previa del logo" className="w-16 h-16 rounded-xl object-contain bg-white border border-zinc-200 p-1" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-purple-100 text-purple-900 flex items-center justify-center font-black text-lg border border-purple-200">
+                      {(carrierForm.name || 'EMP').slice(0, 3).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-zinc-800">Logo de la empresa</p>
+                    <p className="text-[11px] text-zinc-500">PNG, JPG, WEBP o SVG · máximo 600 KB.</p>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={(event) => handleCarrierLogoUpload(event.target.files?.[0])}
+                      className="mt-2 block w-full text-[11px] text-zinc-600 file:mr-2 file:rounded-lg file:border-0 file:bg-purple-900 file:px-3 file:py-1.5 file:font-bold file:text-amber-300 hover:file:bg-purple-950"
+                    />
+                  </div>
+                </div>
+                <Input
+                  label="O usar URL HTTPS del logo"
+                  value={carrierForm.logoUrl.startsWith('data:') ? '' : carrierForm.logoUrl}
+                  onChange={(e) => setCarrierForm({ ...carrierForm, logoUrl: e.target.value })}
+                  placeholder="https://empresa.com/logo.png"
+                />
+                {carrierForm.logoUrl && (
+                  <button type="button" onClick={() => setCarrierForm({ ...carrierForm, logoUrl: '' })} className="text-[11px] font-bold text-red-600 hover:underline">
+                    Quitar logo
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <Select
