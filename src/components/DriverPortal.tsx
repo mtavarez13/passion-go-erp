@@ -91,6 +91,14 @@ export default function DriverPortal({
 
   // Fetch Drivers
   useEffect(() => {
+    if (profile.role === 'Repartidor') {
+      if (!profile.driverId) { setDrivers([]); setLoading(false); return; }
+      return onSnapshot(doc(db, 'delivery_drivers', profile.driverId), snapshot => {
+        setDrivers(snapshot.exists() ? [{ id: snapshot.id, ...snapshot.data() } as DeliveryDriver] : []);
+        setSelectedDriverId(profile.driverId!);
+        setLoading(false);
+      }, () => { setDrivers([]); setLoading(false); });
+    }
     const q = query(collection(db, 'delivery_drivers'));
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeliveryDriver));
@@ -101,10 +109,24 @@ export default function DriverPortal({
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [profile.uid, profile.role, profile.driverId]);
 
   // Fetch Packages for Selected Driver
   useEffect(() => {
+    if (profile.role === 'Repartidor') {
+      setPackages([]);
+      const driver = drivers.find(item => item.id === profile.driverId);
+      if (!driver || driver.status === 'inactive' || !driver.assignedZones?.length) return;
+      const results = new Map<string, WhatsAppPackage[]>();
+      const unsubscribe = driver.assignedZones.map(zone => onSnapshot(
+        query(collection(db, 'packages'), where('sede', '==', driver.assignedSede), where('zona', '==', zone)),
+        snapshot => {
+          results.set(zone, snapshot.docs.map(item => ({ id: item.id, ...item.data() } as WhatsAppPackage)));
+          setPackages(Array.from(results.values()).flat().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')));
+        }, () => { results.delete(zone); setPackages(Array.from(results.values()).flat()); }
+      ));
+      return () => unsubscribe.forEach(stop => stop());
+    }
     if (!selectedDriverId) {
       setPackages([]);
       return;
@@ -117,7 +139,7 @@ export default function DriverPortal({
     });
 
     return () => unsub();
-  }, [selectedDriverId]);
+  }, [selectedDriverId, drivers, profile.role, profile.driverId]);
 
   const currentDriver = drivers.find(d => d.id === selectedDriverId);
 

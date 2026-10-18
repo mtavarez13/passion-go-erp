@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+android-driver/build/
+android-driver/res/
+*.keystore
+*.jks
+outputs/

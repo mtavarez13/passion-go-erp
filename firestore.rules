@@ -42,6 +42,15 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
+    function driverProfile() {
+      return get(/databases/$(database)/documents/delivery_drivers/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.driverId)).data;
+    }
+
+    function canReadDriverOrder(data) {
+      return hasRole('Repartidor') && driverProfile().status != 'inactive' &&
+        data.sede == driverProfile().assignedSede && data.zona in driverProfile().assignedZones;
+    }
+
     function getSede() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sede;
     }
@@ -100,7 +109,8 @@ service cloud.firestore {
         isOwner(userId) && request.resource.data.email == request.auth.token.email &&
         exists(/databases/$(database)/documents/user_access/$(request.auth.token.email)) &&
         request.resource.data.role == get(/databases/$(database)/documents/user_access/$(request.auth.token.email)).data.role &&
-        request.resource.data.enabledModules == get(/databases/$(database)/documents/user_access/$(request.auth.token.email)).data.enabledModules
+        request.resource.data.enabledModules == get(/databases/$(database)/documents/user_access/$(request.auth.token.email)).data.enabledModules &&
+        request.resource.data.get('driverId', '') == get(/databases/$(database)/documents/user_access/$(request.auth.token.email)).data.get('driverId', '')
       );
       allow update: if isGeneralAdmin() || (
         isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'phone'])
@@ -127,15 +137,23 @@ service cloud.firestore {
     }
 
     match /delivery_drivers/{driverId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && (isAdmin() || isSedeOperador(request.resource.data.assignedSede));
+      allow read: if isAdmin() || (hasRole('Repartidor') && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.driverId == driverId);
+      allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /packages/{packageId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidPackage(request.resource.data);
-      allow update: if isAuthenticated();
+      allow read: if (isAuthenticated() && !hasRole('Repartidor')) || canReadDriverOrder(resource.data);
+      allow create: if isAuthenticated() && !hasRole('Repartidor') && isValidPackage(request.resource.data);
+      allow update: if (isAuthenticated() && !hasRole('Repartidor')) || (
+        canReadDriverOrder(resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'estado', 'deliveryStatus', 'deliveredAt', 'deliveryProofPhoto', 'signaturePhoto',
+          'recipientReceivedName', 'recipientIdCard', 'paymentMethodCollected', 'collectedAmount',
+          'deliveryNotes', 'updatedAt', 'rescheduledDate', 'rescheduledTimeWindow',
+          'rescheduleReason', 'rescheduleHistory'
+        ])
+      );
       allow delete: if isAdmin();
     }
 
