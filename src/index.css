@@ -10,6 +10,33 @@ body {
   @apply bg-zinc-50 text-zinc-900 font-sans antialiased;
 }
 
+:root { color-scheme: light; }
+body { margin: 0; background: #f4f6fa; font-size: 14px; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible { outline: 3px solid #ff792b; outline-offset: 3px; }
+.app-toolbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 28px; background: #ffffffed; backdrop-filter: blur(12px); border-bottom: 1px solid #e5eaf2; }
+.app-toolbar strong { display: block; color: #08285b; font-size: 14px; }
+.app-toolbar span { font-size: 11px; color: #718096; }
+.app-account { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #526176; }
+.app-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #16a174; }
+aside { position: sticky; top: 0; height: 100dvh; min-height: 100dvh !important; }
+aside nav { min-height: 0; }
+main > div.max-w-7xl { padding-top: 24px; }
+main header h1 { letter-spacing: -.035em; }
+main .grid button { border-color: #e2e8f0; border-radius: 16px; }
+main .grid button:hover { border-color: #c1cfe2; transform: translateY(-2px); }
+.bg-purple-950, .bg-purple-900 { background-color: #08285b; }
+.text-purple-950, .text-purple-900 { color: #08285b; }
+.bg-purple-50 { background-color: #edf3fc; }
+.text-amber-400, .text-amber-500 { color: #ff792b; }
+@media (max-width: 640px) {
+  .app-toolbar { padding: 10px 14px; }
+  .app-account { max-width: 95px; font-size: 10px; }
+  aside.w-64 { position: fixed; left: 0; z-index: 40; box-shadow: 12px 0 50px #08285b26; }
+  main header h1 { font-size: 23px; }
+  main table { font-size: 12px; }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }

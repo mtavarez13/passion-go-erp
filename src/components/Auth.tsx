@@ -47,7 +47,7 @@ export default function Auth({ onLoginSuccess }: { onLoginSuccess?: () => void }
     <div className="bg-transparent flex items-center justify-center p-2">
       <Card className="max-w-md w-full p-8 text-center flex flex-col items-center gap-6 shadow-2xl border border-purple-100 bg-white rounded-3xl">
         <div className="w-16 h-16 bg-purple-900 rounded-2xl flex items-center justify-center text-amber-400 shadow-lg shadow-purple-950/20">
-          <ShieldCheck size={32} />
+          <img src="/app-icon.png" alt="Passion Go" className="w-14 h-12 object-contain bg-white rounded-xl p-1" />
         </div>
         <div>
           <h1 className="text-2xl font-black tracking-tight text-purple-950">Passion <span className="text-amber-500">Go</span></h1>

@@ -46,7 +46,7 @@ export default function Layout() {
   const [activeTab, setActiveTab] = useState<
     'passion-go' | 'dashboard' | 'whatsapp' | 'accounting' | 'inventory' | 'cash' | 'branches' | 'users' | 'packages' | 'api-panel' | 'franchises' | 'delivery-drivers' | 'driver-portal'
   >('passion-go');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
@@ -201,10 +201,10 @@ export default function Layout() {
           <div className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
             <header className="flex flex-col gap-1">
               <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">
-                Bienvenido, {user.displayName || profile?.email}
+                Tu operación, en un solo lugar
               </h1>
               <p className="text-zinc-500 text-sm">
-                Panel de control logístico Passion Go • Sucursal: <strong className="text-zinc-800">{profile?.sede}</strong>
+                Hola, {user.displayName || profile?.email} · Sucursal: <strong className="text-zinc-800">{profile?.sede}</strong>
               </p>
             </header>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -219,7 +219,7 @@ export default function Layout() {
                   </div>
                   <div>
                     <h3 className="font-bold text-zinc-900 text-sm sm:text-base">{item.label}</h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">Acceder al módulo</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">Abrir módulo →</p>
                   </div>
                 </button>
               ))}
@@ -295,7 +295,7 @@ export default function Layout() {
                   Passion <span className="text-amber-500">Go</span>
                 </span>
                 <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block mt-0.5">
-                  Última Milla Express
+                  ERP · Logística y delivery
                 </span>
               </div>
             </div>
@@ -356,7 +356,8 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="app-toolbar"><div className="flex items-center gap-3"><img src="/app-icon.png" alt="Passion Go" className="h-9 w-16 object-contain" /><div><strong>Passion Go</strong><span>Control de operaciones</span></div></div><div className="app-account"><span className="app-status-dot" />{profile?.role}</div></div>
         {renderContent()}
       </main>
     </div>
